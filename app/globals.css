@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  height: 100%;
+  background-color: #0b0d10;
+  color: #e7ecf3;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(124,92,255,0.18), transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, rgba(62,207,142,0.12), transparent 60%),
+    #0b0d10;
+  min-height: 100vh;
+}
+
+.card {
+  background-color: #14171c;
+  border: 1px solid #1f242c;
+  border-radius: 14px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  padding: 0.75rem 1.1rem;
+  font-weight: 600;
+  transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+.btn:active { transform: translateY(1px); }
+
+.btn-primary {
+  background: linear-gradient(180deg, #8a6cff 0%, #6a4cff 100%);
+  color: white;
+  border: 1px solid #5a3dff;
+}
+.btn-primary:hover { background: linear-gradient(180deg, #9a7dff 0%, #7a5cff 100%); }
+
+.btn-ghost {
+  background: transparent;
+  color: #e7ecf3;
+  border: 1px solid #1f242c;
+}
+.btn-ghost:hover { border-color: #2b323c; }
+
+.chat-bubble-user {
+  background: #1a1f27;
+  border: 1px solid #252c36;
+}
+.chat-bubble-ai {
+  background: linear-gradient(180deg, #1a1530 0%, #141025 100%);
+  border: 1px solid #2a2150;
+}
