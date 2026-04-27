@@ -17,6 +17,7 @@ export default function ProjectContextForm({ initial, onSaved, onCancel }) {
   const [stage, setStage] = useState(initial?.stage || "prototype");
   const [curiosity, setCuriosity] = useState(initial?.curiosity || "");
   const [stuckOn, setStuckOn] = useState(initial?.stuckOn || "");
+  const [preferences, setPreferences] = useState(initial?.preferences || "");
   const [saving, setSaving] = useState(false);
 
   function save(e) {
@@ -29,6 +30,7 @@ export default function ProjectContextForm({ initial, onSaved, onCancel }) {
         stage,
         curiosity,
         stuckOn,
+        preferences,
       });
       onSaved?.(saved);
     } finally {
@@ -46,7 +48,7 @@ export default function ProjectContextForm({ initial, onSaved, onCancel }) {
         </div>
         <div className="text-sm text-mute mt-1">
           This context goes into every daily briefing. More detail = sharper
-          suggestions. You can edit it any time.
+          suggestions. You can edit any time.
         </div>
       </div>
 
@@ -119,13 +121,28 @@ export default function ProjectContextForm({ initial, onSaved, onCancel }) {
         />
       </div>
 
+      <div>
+        <label className="text-xs text-mute block mb-1">
+          Preferences for suggestions{" "}
+          <span className="text-mute">(optional)</span>
+        </label>
+        <textarea
+          value={preferences}
+          onChange={(e) => setPreferences(e.target.value)}
+          rows={3}
+          placeholder={`e.g. "prefer actionable snippets over essays; skip vendor comparisons; deprioritize pure-research papers; I'm an open-source leaning person"`}
+          className="w-full bg-black/20 border border-edge rounded-lg p-3 text-sm outline-none focus:border-accent/60"
+        />
+        <div className="text-[11px] text-mute mt-1">
+          This is a free-form "more of X, less of Y" layer the AI will follow.
+          Combined with your 👍/👎 feedback over time, it shapes every briefing
+          and reply.
+        </div>
+      </div>
+
       <div className="flex gap-2 justify-end">
         {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            className="btn btn-ghost"
-          >
+          <button type="button" onClick={onCancel} className="btn btn-ghost">
             Cancel
           </button>
         )}

@@ -255,3 +255,74 @@ Prompts are the knobs. Code rarely needs touching for output quality.
   when deployed.
 - **No third-party trackers, no ads, no telemetry** in the app itself. Vercel
   collects standard deployment analytics if you host there.
+
+---
+
+## 10. How the app "learns" from you (feedback + preferences + RAG)
+
+LLMs like Groq's llama-3.3 don't update their weights from your interactions.
+To make the app feel like it's adapting, three mechanisms run at request time:
+
+### Thumbs up/down feedback
+
+A 👍/👎 sits on every briefing item's card. When you click one, the journal
+records `{ surface, subject, vote, at }` under today's entry. On the next
+brief fetch, `getFeedbackSummary()` extracts deduped liked/disliked lists
+from the last ~30 days and prepends them to the LLM prompt as:
+
+```
+USER FEEDBACK HISTORY:
+- LIKED recently: [subject 1; subject 2; ...]
+- DISLIKED recently: [subject 1; subject 2; ...]
+```
+
+The `PER_ITEM_SYSTEM` prompt instructs: *"bias toward the style of LIKED
+items and away from DISLIKED ones."* Your votes shape the next run.
+
+### Explicit preferences
+
+A free-text field in the project context form ("prefer actionable
+suggestions, skip vendor comparisons") lives alongside your stack and stage.
+It gets injected into every prompt under `PREFERENCES (explicit, user-set -
+obey these)`. The prompt treats preferences as overriding defaults.
+
+### Keyword RAG over journal
+
+Every brief refresh, the client calls `buildSearchPool()` — a capped, flat
+list of text snippets from recent Listen topics, Listen notes, Lost lookups,
+and Talk session openers, each tagged with `{ date, type, text }`. This
+pool is sent to `/api/brief/fetch` alongside the context bundle.
+
+For each feed item fetched from HN/RSS, the server runs `searchPoolFor(item,
+pool)` — a lexical match (tokenize title + description, overlap with each
+snippet's tokens, score, top-K). Top 2-3 matching snippets are injected
+into that item's enrichment prompt as:
+
+```
+RELATED NOTES FROM PAST JOURNAL (keyword-matched against the item title):
+- [2026-04-20 · topic] MCP servers
+- [2026-04-18 · lookup] they were talking about MCP and I got lost
+- [2026-04-22 · note] team decided to standardize on Claude for new features
+```
+
+The LLM can now reference specific past moments by date. The `related` array
+is also rendered on each item card so you can see what past context informed
+the suggestion.
+
+### Transparency footer
+
+Every rendered brief shows `preferencesPresent`, `feedbackCount`, and
+`searchPoolSize` in small text — so you always know what signals actually
+shaped today's output.
+
+### Where this lives in code
+
+| Concept | File | Functions |
+|---|---|---|
+| Feedback storage | `lib/journal.js` | `addFeedback`, `getRecentFeedback`, `getFeedbackSummary` |
+| Feedback UI | `components/FeedbackButtons.js` | `<FeedbackButtons surface subject />` |
+| Preferences storage | `lib/journal.js` | `getProject`, `setProject` (preferences field) |
+| Preferences UI | `components/ProjectContextForm.js` | 5th textarea |
+| Search pool builder | `lib/journal.js` | `buildSearchPool` |
+| Per-item retrieval | `app/api/brief/fetch/route.js` | `searchPoolFor`, `meaningfulTokens` |
+| Prompt injection | `app/api/brief/fetch/route.js` | `buildContextBlock`, `enrichItem` |

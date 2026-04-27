@@ -10,6 +10,7 @@ import {
   getRecentDays,
 } from "@/lib/journal";
 import ProjectContextForm from "@/components/ProjectContextForm";
+import FeedbackButtons from "@/components/FeedbackButtons";
 
 const STAGE_LABELS = {
   idea: "Idea / exploring",
@@ -157,6 +158,26 @@ function BriefItem({ item, indexForStagger = 0 }) {
         </section>
       )}
 
+      {Array.isArray(item.related) && item.related.length > 0 && (
+        <section>
+          <div className="text-[11px] uppercase tracking-wider text-mute">
+            Related in your journal
+          </div>
+          <ul className="mt-2 space-y-1">
+            {item.related.map((r, i) => (
+              <li
+                key={i}
+                className="text-xs text-mute bg-black/20 border border-edge rounded px-2 py-1 leading-relaxed"
+              >
+                <span className="text-ink/80">[{r.date}]</span>{" "}
+                <span className="text-accent">{r.type}</span>:{" "}
+                {r.text}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {item.tryIt && (
         <section>
           <div className="text-[11px] uppercase tracking-wider text-mute">
@@ -168,7 +189,7 @@ function BriefItem({ item, indexForStagger = 0 }) {
         </section>
       )}
 
-      <footer>
+      <footer className="flex items-center justify-between gap-3 flex-wrap">
         <a
           href={item.url}
           target="_blank"
@@ -177,6 +198,7 @@ function BriefItem({ item, indexForStagger = 0 }) {
         >
           Open source -&gt;
         </a>
+        <FeedbackButtons surface="brief" subject={item.title} />
       </footer>
     </article>
   );
@@ -202,7 +224,6 @@ export default function BriefPage() {
     setPrevious(recent);
   }, []);
 
-  // Tick every 60s so "N min ago" labels update live.
   useEffect(() => {
     const id = setInterval(() => setRelativeTick((t) => t + 1), 60000);
     return () => clearInterval(id);
@@ -227,6 +248,7 @@ export default function BriefPage() {
         sources: data.sources || [],
         fetchedAt: data.fetchedAt,
         note: data.note || null,
+        personalizationUsed: data.personalizationUsed || null,
       };
       setDayBrief(today, saved);
       setBrief({ ...saved });
@@ -285,13 +307,13 @@ export default function BriefPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header + refresh */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex-1 min-w-[260px]">
           <h1 className="text-2xl font-semibold">Briefing</h1>
           <p className="text-mute text-sm mt-1">
-            New models, agents, and approaches - filtered and reasoned for
-            what you&apos;re building.
+            New models, agents, and approaches - filtered and reasoned for what
+            you&apos;re building. Your 👍/👎 and preferences shape every
+            refresh.
           </p>
         </div>
         <button
@@ -303,7 +325,6 @@ export default function BriefPage() {
         </button>
       </div>
 
-      {/* Context summary */}
       <div className="card p-4">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex-1 min-w-[260px] space-y-1">
@@ -315,6 +336,11 @@ export default function BriefPage() {
               {project.stack && <>Stack: {project.stack} · </>}
               Stage: {STAGE_LABELS[project.stage] || project.stage}
             </div>
+            {project.preferences && (
+              <div className="text-xs text-mute mt-1">
+                Preferences: <span className="text-ink/70">{project.preferences}</span>
+              </div>
+            )}
           </div>
           <button
             onClick={() => setEditingContext(true)}
@@ -331,7 +357,6 @@ export default function BriefPage() {
         </div>
       )}
 
-      {/* Empty state */}
       {!brief && !fetching && (
         <div className="card p-6 text-center space-y-3">
           <div className="text-sm text-mute">
@@ -344,28 +369,30 @@ export default function BriefPage() {
         </div>
       )}
 
-      {/* Loading */}
       {fetching && (
         <div className="card p-6 text-center text-sm text-mute">
           Reading the feeds and reasoning about fit for your project...
           <div className="mt-2 text-[11px] text-mute">
-            Usually takes 15-30 seconds. Pulling from 6 sources in parallel.
+            Usually takes 15-30 seconds. Pulling from 6 sources and searching
+            your journal for related past moments.
           </div>
         </div>
       )}
 
-      {/* Today's brief */}
       {hasItems && (
         <section>
-          <div className="flex items-center justify-between mb-3 text-xs text-mute">
+          <div className="flex items-center justify-between mb-3 text-xs text-mute flex-wrap gap-2">
             <div className="uppercase tracking-wider">
               {formatDate(todayKey())}
             </div>
-            <div className="flex items-center gap-2">
-              {brief.sources?.length > 0 && (
-                <span className="hidden sm:inline">
-                  {brief.sources.length} source
-                  {brief.sources.length === 1 ? "" : "s"}
+            <div className="flex items-center gap-2 flex-wrap">
+              {brief.personalizationUsed && (
+                <span title="What context shaped this brief">
+                  {brief.personalizationUsed.preferencesPresent ? "prefs on · " : ""}
+                  {brief.personalizationUsed.feedbackCount > 0
+                    ? `${brief.personalizationUsed.feedbackCount} feedback · `
+                    : ""}
+                  {brief.personalizationUsed.searchPoolSize} journal snippets
                 </span>
               )}
               {brief.fetchedAt && (
@@ -389,7 +416,6 @@ export default function BriefPage() {
         </section>
       )}
 
-      {/* Empty items returned */}
       {brief && !hasItems && !fetching && (
         <div className="card p-5 text-sm text-mute text-center">
           {brief.note ||
@@ -397,7 +423,6 @@ export default function BriefPage() {
         </div>
       )}
 
-      {/* Previous briefings */}
       {previous.length > 0 && (
         <section className="pt-2">
           <div className="text-xs uppercase tracking-wider text-mute mb-3">
