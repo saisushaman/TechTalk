@@ -4,14 +4,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// ---------------------------------------------------------------------------
-// Feed sources
-// ---------------------------------------------------------------------------
-
-const HN_TOPSTORIES =
-  "https://hacker-news.firebaseio.com/v0/topstories.json";
-const HN_ITEM = (id) =>
-  `https://hacker-news.firebaseio.com/v0/item/${id}.json`;
+const HN_TOPSTORIES = "https://hacker-news.firebaseio.com/v0/topstories.json";
+const HN_ITEM = (id) => `https://hacker-news.firebaseio.com/v0/item/${id}.json`;
 
 const RSS_FEEDS = [
   { name: "Anthropic", url: "https://www.anthropic.com/news/rss.xml" },
@@ -22,17 +16,12 @@ const RSS_FEEDS = [
 ];
 
 const AI_KEYWORDS = [
-  "ai", "llm", "gpt", "claude", "gemini", "anthropic", "openai", "deepmind",
-  "mistral", "llama", "groq", "nvidia", "cuda", "agent", "agents", "mcp",
-  "rag", "embedding", "embeddings", "vector", "fine-tun", "finetun",
-  "transformer", "diffusion", "inference", "token", "model", "prompt",
-  "cursor", "copilot", "hugging face", "huggingface", "arxiv", "whisper",
-  "voice", "multimodal", "context window",
+  "ai","llm","gpt","claude","gemini","anthropic","openai","deepmind","mistral",
+  "llama","groq","nvidia","cuda","agent","agents","mcp","rag","embedding",
+  "embeddings","vector","fine-tun","finetun","transformer","diffusion",
+  "inference","token","model","prompt","cursor","copilot","hugging face",
+  "huggingface","arxiv","whisper","voice","multimodal","context window",
 ];
-
-// ---------------------------------------------------------------------------
-// Utilities
-// ---------------------------------------------------------------------------
 
 function fetchWithTimeout(url, { timeoutMs = 8000, ...opts } = {}) {
   const ctrl = new AbortController();
@@ -43,8 +32,7 @@ function fetchWithTimeout(url, { timeoutMs = 8000, ...opts } = {}) {
     cache: "no-store",
     headers: {
       "User-Agent": "ConvoTechBriefingBot/1.0 (+personal-use)",
-      Accept:
-        "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
+      Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
       ...(opts.headers || {}),
     },
   }).finally(() => clearTimeout(timer));
@@ -54,7 +42,6 @@ function tokenize(s) {
   return (s || "").toLowerCase().match(/[a-z0-9]{2,}/g) || [];
 }
 
-// Stopwords so "the claude model" matches on "claude", "model" — not "the"
 const STOPWORDS = new Set([
   "the","and","for","with","from","that","this","are","was","were","you","your",
   "has","have","had","but","not","can","will","what","which","they","their",
@@ -66,10 +53,6 @@ const STOPWORDS = new Set([
 function meaningfulTokens(s) {
   return tokenize(s).filter((t) => !STOPWORDS.has(t) && t.length > 2);
 }
-
-// ---------------------------------------------------------------------------
-// Hacker News
-// ---------------------------------------------------------------------------
 
 function isAiStory(item) {
   if (!item || !item.title) return false;
@@ -89,9 +72,7 @@ async function fetchHackerNews(maxItems = 5) {
           const r = await fetchWithTimeout(HN_ITEM(id), { timeoutMs: 4000 });
           if (!r.ok) return null;
           return await r.json();
-        } catch {
-          return null;
-        }
+        } catch { return null; }
       }),
     );
     const ai = details.filter(Boolean).filter(isAiStory).slice(0, maxItems);
@@ -108,22 +89,13 @@ async function fetchHackerNews(maxItems = 5) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// RSS + Atom parser (zero-dep, regex based)
-// ---------------------------------------------------------------------------
-
 function stripTags(s) {
   return (s || "")
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ").trim();
 }
 
 function matchFirst(xml, regex) {
@@ -172,18 +144,12 @@ function parseFeed(xml) {
 async function fetchRssSource(feed, perFeedItems = 2) {
   try {
     const r = await fetchWithTimeout(feed.url, { timeoutMs: 6000 });
-    if (!r.ok) {
-      console.warn(`RSS ${feed.name} HTTP ${r.status}`);
-      return [];
-    }
+    if (!r.ok) return [];
     const xml = await r.text();
     const items = parseFeed(xml).slice(0, perFeedItems);
     return items.map((it) => ({
-      source: feed.name,
-      title: it.title,
-      url: it.url,
-      publishedAt: it.publishedAt,
-      description: it.description,
+      source: feed.name, title: it.title, url: it.url,
+      publishedAt: it.publishedAt, description: it.description,
     }));
   } catch (err) {
     console.warn(`RSS ${feed.name} fetch error:`, err?.message || err);
@@ -195,10 +161,6 @@ async function fetchAllRss() {
   const results = await Promise.all(RSS_FEEDS.map((f) => fetchRssSource(f, 2)));
   return results.flat();
 }
-
-// ---------------------------------------------------------------------------
-// Rank + dedupe
-// ---------------------------------------------------------------------------
 
 function dedupeByUrl(items) {
   const seen = new Set();
@@ -225,16 +187,11 @@ function rankItems(items) {
       const age = ageHours(it.publishedAt);
       const recencyScore = Math.max(0, 72 - age);
       const primarySourceBonus = it.source === "Hacker News" ? 0 : 20;
-      const hnScoreBonus =
-        it.source === "Hacker News" ? Math.min(30, (it.score || 0) / 10) : 0;
+      const hnScoreBonus = it.source === "Hacker News" ? Math.min(30, (it.score || 0) / 10) : 0;
       return { ...it, _rank: recencyScore + primarySourceBonus + hnScoreBonus };
     })
     .sort((a, b) => b._rank - a._rank);
 }
-
-// ---------------------------------------------------------------------------
-// Lexical retrieval over the client-provided searchPool (lightweight RAG)
-// ---------------------------------------------------------------------------
 
 function searchPoolFor(item, pool, topK = 3) {
   if (!Array.isArray(pool) || pool.length === 0) return [];
@@ -242,7 +199,6 @@ function searchPoolFor(item, pool, topK = 3) {
   const qTokens = meaningfulTokens(query);
   if (qTokens.length === 0) return [];
   const qSet = new Set(qTokens);
-
   const scored = [];
   for (const snippet of pool) {
     if (!snippet || !snippet.text) continue;
@@ -251,13 +207,9 @@ function searchPoolFor(item, pool, topK = 3) {
     let hits = 0;
     const seen = new Set();
     for (const t of sTokens) {
-      if (qSet.has(t) && !seen.has(t)) {
-        hits += 1;
-        seen.add(t);
-      }
+      if (qSet.has(t) && !seen.has(t)) { hits += 1; seen.add(t); }
     }
     if (hits === 0) continue;
-    // small boost for short focused snippets (topics are usually most signal)
     const brevityBoost = snippet.type === "topic" ? 0.5 : 0;
     const score = hits / Math.sqrt(sTokens.length) + brevityBoost;
     scored.push({ ...snippet, _score: score });
@@ -265,9 +217,74 @@ function searchPoolFor(item, pool, topK = 3) {
   return scored.sort((a, b) => b._score - a._score).slice(0, topK);
 }
 
-// ---------------------------------------------------------------------------
-// LLM enrichment
-// ---------------------------------------------------------------------------
+const RELEVANCE_FILTER_SYSTEM = `You are a strict relevance filter for a personal tech briefing.
+
+You will receive a person's project context and a numbered list of news items. For each item, decide if it is directly useful to THIS person's project, stack, or open problems.
+
+BE STRICT. The bar is "would a thoughtful colleague forward this to them today?" — not "is this AI-related." Rule of thumb:
+- KEEP if: the item is about a model, tool, technique, or problem they could plausibly use, swap into their stack, or learn from for their specific domain.
+- DROP if: it's a partnership announcement, marketing fluff, generic AI news, a model unrelated to their stack, a domain unrelated to theirs, or a research paper that doesn't apply to their use case.
+
+If TODAY'S FOCUS is present, treat it as additional HARD constraints — drop items that don't satisfy the focus, even if they would otherwise pass.
+
+Output ONLY a JSON object with this shape:
+{
+  "decisions": [
+    { "index": 0, "keep": true, "reason": "short reason - max 12 words" },
+    { "index": 1, "keep": false, "reason": "short reason - max 12 words" }
+  ]
+}
+
+Every input item must have exactly one decision. Indexes are 0-based. No prose outside the JSON.`;
+
+async function filterRelevant(items, contextBlock) {
+  if (!items.length) return { kept: [], dropped: [] };
+  const numbered = items
+    .map((it, i) => `${i}. [${it.source}] ${it.title}${it.description ? ` — ${it.description.slice(0, 160)}` : ""}`)
+    .join("\n");
+  const userPrompt = `${contextBlock}
+
+ITEMS TO FILTER (${items.length} total):
+${numbered}
+
+Now produce the JSON decisions for all ${items.length} items.`;
+
+  let parsed = null;
+  try {
+    const raw = await chat({
+      system: RELEVANCE_FILTER_SYSTEM,
+      messages: [{ role: "user", content: userPrompt }],
+      json: true,
+      maxTokens: 800,
+    });
+    parsed = safeParseJson(raw);
+  } catch (err) {
+    console.warn("relevance filter call failed:", err?.message || err);
+  }
+
+  if (!parsed || !Array.isArray(parsed.decisions)) {
+    return { kept: items, dropped: [], filterFailed: true };
+  }
+
+  const decisionByIndex = new Map();
+  for (const d of parsed.decisions) {
+    if (typeof d?.index === "number") {
+      decisionByIndex.set(d.index, {
+        keep: !!d.keep,
+        reason: String(d.reason || "").slice(0, 120),
+      });
+    }
+  }
+
+  const kept = [];
+  const dropped = [];
+  items.forEach((it, i) => {
+    const dec = decisionByIndex.get(i);
+    if (!dec || dec.keep) kept.push(it);
+    else dropped.push({ title: it.title, source: it.source, reason: dec.reason });
+  });
+  return { kept, dropped };
+}
 
 const PER_ITEM_SYSTEM = `You are the editor of a personal tech briefing. For each feed item, produce a structured reasoned assessment for a specific person based on what you know about them.
 
@@ -280,13 +297,20 @@ Output ONLY JSON with this exact shape:
 }
 
 Rules:
-- If PREFERENCES says "prefer X / skip Y", obey it. It overrides your defaults.
-- If LIKED/DISLIKED lists are present, bias toward the style of LIKED items and away from DISLIKED ones.
-- If RELATED NOTES FROM PAST JOURNAL are present, reference the specific past moment when it's genuinely relevant ("you flagged MCP servers last Tuesday"). Don't shoehorn it.
+- If TODAY'S FOCUS is present, treat it as a hard scoping constraint - emphasize fit through that lens.
+- If PREFERENCES says "prefer X / skip Y", obey it.
+- If LIKED/DISLIKED lists are present, bias toward LIKED and away from DISLIKED.
+- If RELATED NOTES FROM PAST JOURNAL are present, reference the specific past moment when genuinely relevant.
 - Consider at least one competing viewpoint before settling on a verdict.
 - Never add prose outside the JSON. Never use markdown fences.`;
 
-function buildContextBlock({ project, recentTopics, recentLookups, feedback }) {
+function buildContextBlock({
+  project,
+  recentTopics,
+  recentLookups,
+  feedback,
+  focusMessages,
+}) {
   const p = project || {};
   const lines = [];
   lines.push("PERSON:");
@@ -300,6 +324,16 @@ function buildContextBlock({ project, recentTopics, recentLookups, feedback }) {
     lines.push("");
     lines.push("PREFERENCES (explicit, user-set - obey these):");
     lines.push(p.preferences);
+  }
+
+  if (Array.isArray(focusMessages) && focusMessages.length > 0) {
+    lines.push("");
+    lines.push(
+      "TODAY'S FOCUS (session-only steering - treat as HARD constraints for THIS refresh, override looser preferences if they conflict):",
+    );
+    for (const m of focusMessages.slice(-6)) {
+      lines.push(`- ${m}`);
+    }
   }
 
   if (feedback && (feedback.liked?.length || feedback.disliked?.length)) {
@@ -329,9 +363,7 @@ function buildContextBlock({ project, recentTopics, recentLookups, feedback }) {
 async function enrichItem(item, contextBlock, relatedSnippets) {
   let relatedBlock = "";
   if (relatedSnippets && relatedSnippets.length) {
-    const lines = relatedSnippets.map(
-      (s) => `- [${s.date} · ${s.type}] ${s.text}`,
-    );
+    const lines = relatedSnippets.map((s) => `- [${s.date} · ${s.type}] ${s.text}`);
     relatedBlock = `\n\nRELATED NOTES FROM PAST JOURNAL (keyword-matched against the item title):\n${lines.join("\n")}`;
   }
 
@@ -364,11 +396,7 @@ Now produce the JSON assessment for this person.`;
       verdict: String(parsed.verdict || "worth exploring").toLowerCase(),
       fitReasoning: String(parsed.fitReasoning || ""),
       tryIt: String(parsed.tryIt || ""),
-      related: (relatedSnippets || []).map((s) => ({
-        date: s.date,
-        type: s.type,
-        text: s.text,
-      })),
+      related: (relatedSnippets || []).map((s) => ({ date: s.date, type: s.type, text: s.text })),
     };
   } catch (err) {
     console.warn("enrich item failed:", item.title, err?.message || err);
@@ -391,10 +419,6 @@ async function enrichAllBatched(items, contextBlock, searchPool, batchSize = 3) 
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// Route
-// ---------------------------------------------------------------------------
-
 export async function POST(req) {
   try {
     const body = await req.json().catch(() => ({}));
@@ -402,39 +426,58 @@ export async function POST(req) {
     const recentTopics = Array.isArray(body.recentTopics) ? body.recentTopics : [];
     const recentLookups = Array.isArray(body.recentLookups) ? body.recentLookups : [];
     const feedback = body.feedback && typeof body.feedback === "object"
-      ? body.feedback
-      : { liked: [], disliked: [] };
+      ? body.feedback : { liked: [], disliked: [] };
     const searchPool = Array.isArray(body.searchPool) ? body.searchPool : [];
+    const focusMessages = Array.isArray(body.focusMessages)
+      ? body.focusMessages.filter((m) => typeof m === "string" && m.trim()).slice(0, 6)
+      : [];
 
     const [hn, rss] = await Promise.all([fetchHackerNews(5), fetchAllRss()]);
     const allRaw = dedupeByUrl([...rss, ...hn]);
     if (allRaw.length === 0) {
       return Response.json({
-        items: [],
-        sources: [],
-        note: "No stories available right now. Feeds may be temporarily down - try refreshing later.",
+        items: [], sources: [],
+        note: "No stories available right now. Feeds may be temporarily down.",
       });
     }
 
     const ranked = rankItems(allRaw).slice(0, 8);
+
     const contextBlock = buildContextBlock({
-      project,
-      recentTopics,
-      recentLookups,
-      feedback,
+      project, recentTopics, recentLookups, feedback, focusMessages,
     });
-    const enriched = await enrichAllBatched(ranked, contextBlock, searchPool, 3);
+
+    const { kept, dropped, filterFailed } = await filterRelevant(ranked, contextBlock);
+
+    const personalizationUsed = {
+      preferencesPresent: !!(project?.preferences),
+      feedbackCount: (feedback.liked?.length || 0) + (feedback.disliked?.length || 0),
+      searchPoolSize: searchPool.length,
+      filterFailed: !!filterFailed,
+      focusActive: focusMessages.length,
+    };
+
+    if (kept.length === 0) {
+      return Response.json({
+        items: [], sources: [],
+        droppedItems: dropped, droppedCount: dropped.length,
+        note: focusMessages.length > 0
+          ? "No items match today's focus. Try removing focus rules, refreshing later, or widening your project context."
+          : "No items today match your project. Try refreshing later, or edit your project context to widen the relevance filter.",
+        personalizationUsed,
+      });
+    }
+
+    const enriched = await enrichAllBatched(kept, contextBlock, searchPool, 3);
     const sourcesUsed = Array.from(new Set(enriched.map((i) => i.source)));
 
     return Response.json({
       items: enriched,
       sources: sourcesUsed,
       fetchedAt: new Date().toISOString(),
-      personalizationUsed: {
-        preferencesPresent: !!(project?.preferences),
-        feedbackCount: (feedback.liked?.length || 0) + (feedback.disliked?.length || 0),
-        searchPoolSize: searchPool.length,
-      },
+      droppedItems: dropped,
+      droppedCount: dropped.length,
+      personalizationUsed,
     });
   } catch (err) {
     console.error("brief fetch error:", err);
