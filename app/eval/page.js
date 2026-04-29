@@ -37,7 +37,7 @@ function ScoreBar({ label, value }) {
   );
 }
 
-function BenchmarkPanel({ model, project, evalContext }) {
+function BenchmarkPanel({ model, project, evalContext, canBenchmark, lockReason }) {
   const [open, setOpen] = useState(false);
   const [prompts, setPrompts] = useState(["", "", ""]);
   const [seeding, setSeeding] = useState(false);
@@ -99,12 +99,21 @@ function BenchmarkPanel({ model, project, evalContext }) {
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="text-xs btn btn-ghost"
-      >
-        Run real benchmark on {model.displayName} →
-      </button>
+      <div className="space-y-1">
+        <button
+          onClick={() => setOpen(true)}
+          disabled={!canBenchmark}
+          title={!canBenchmark ? lockReason : `Run benchmark on ${model.displayName}`}
+          className="text-xs btn btn-ghost disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Run real benchmark on {model.displayName} →
+        </button>
+        {!canBenchmark && (
+          <div className="text-[11px] text-mute">
+            Benchmarking is enabled for preferred models only.
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -250,6 +259,13 @@ function BenchmarkPanel({ model, project, evalContext }) {
 }
 
 function ModelCard({ model, isPick, project, evalContext }) {
+  const isPreferred = isPick || model.fitVerdict === "strong fit";
+  const lockReason = isPick
+    ? ""
+    : model.fitVerdict === "strong fit"
+      ? ""
+      : "Only preferred models (AI pick or strong fit) can run benchmarks.";
+
   return (
     <article
       className={`card p-5 space-y-3 ${isPick ? "border-accent2/60" : ""}`}
@@ -329,7 +345,13 @@ function ModelCard({ model, isPick, project, evalContext }) {
       )}
 
       {/* Per-model real benchmark trigger */}
-      <BenchmarkPanel model={model} project={project} evalContext={evalContext} />
+      <BenchmarkPanel
+        model={model}
+        project={project}
+        evalContext={evalContext}
+        canBenchmark={isPreferred}
+        lockReason={lockReason}
+      />
     </article>
   );
 }
